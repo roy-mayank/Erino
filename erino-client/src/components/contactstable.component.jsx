@@ -81,32 +81,13 @@ export default function FullFeaturedCrudGrid() {
         setRowModesModel({ ...rowModesModel, [id]: { mode: GridRowModes.Edit } });
     };
 
-    const handleSaveClick = (id) => async () => {
-        const updatedRow = rows.find((row) => row._id === id);
-        console.log("saveclick")
-        if (!updatedRow) {
-            console.error("Row not found for saving:", id);
-            return;
-        }
-        setRowModesModel({ ...rowModesModel, [id]: { mode: GridRowModes.View } });
-        try {
-            if (updatedRow.isNew) {
-                const response = await axios.post("http://localhost:3001/contacts", updatedRow);
-                const newContact = response.data;
-                setRows((prevRows) =>
-                    prevRows.map((row) => (row._id === id ? { ...newContact, isNew: false } : row))
-                );
-            } else {
-                await axios.put(`http://localhost:3001/contacts/${id}`, updatedRow);
-                console.log("im here")
-                setRows((prevRows) =>
-                    prevRows.map((row) => (row._id === id ? { ...row, isNew: false } : row))
-                );
-            }
-        } catch (error) {
-            console.error("Error saving contact:", error);
-        }
+    const handleSaveClick = (id) => () => {
+        setRowModesModel((prevModel) => ({
+            ...prevModel,
+            [id]: { mode: GridRowModes.View },
+        }));
     };
+
 
     const handleDeleteClick = (id) => async () => {
         try {
@@ -129,13 +110,33 @@ export default function FullFeaturedCrudGrid() {
         }
     };
 
-    const processRowUpdate = (newRow) => {
-        setRows((prevRows) =>
-            prevRows.map((row) => (row._id === newRow._id ? { ...row, ...newRow, isNew: false } : row))
-        );
-        console.log("updateclick")
-        return newRow;
+    const processRowUpdate = async (newRow) => {
+        try {
+            let updatedRow;
+
+            if (newRow.isNew) {
+                const response = await axios.post("http://localhost:3001/contacts", newRow);
+                updatedRow = response.data;
+
+                setRows((prevRows) =>
+                    prevRows.map((row) => (row._id === newRow._id ? { ...updatedRow, isNew: false } : row))
+                );
+                return { ...updatedRow, isNew: false };
+            } else {
+                const response = await axios.put(`http://localhost:3001/contacts/${newRow._id}`, newRow);
+                updatedRow = response.data;
+
+                setRows((prevRows) =>
+                    prevRows.map((row) => (row._id === newRow._id ? { ...updatedRow, isNew: false } : row))
+                );
+                return updatedRow;
+            }
+        } catch (error) {
+            console.error("Error updating row:", error);
+            throw error;
+        }
     };
+
 
     const columns = [
         { field: 'firstName', headerName: 'First Name', width: 150, editable: true },
@@ -143,7 +144,7 @@ export default function FullFeaturedCrudGrid() {
         { field: 'email', headerName: 'Email', width: 200, editable: true },
         { field: 'phoneNumber', headerName: 'Phone Number', width: 150, editable: true },
         { field: 'company', headerName: 'Company', width: 180, editable: true },
-        { field: 'jobTitle', headerName: 'Job Title', width: 180, editable: true },
+        { field: 'role', headerName: 'Job Title', width: 180, editable: true },
         {
             field: 'actions',
             type: 'actions',
